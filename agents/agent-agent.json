@@ -1,0 +1,181 @@
+{
+  "agent_name": "Lone Star Insurance",
+  "engine": "retell-llm",
+  "voice": {
+    "voice_id": "cartesia-Gilfoy",
+    "voice_model": "sonic-3",
+    "voice_speed": 1,
+    "voice_temperature": 1
+  },
+  "language": "en-US",
+  "conversation_settings": {
+    "interruption_sensitivity": 0.8,
+    "responsiveness": 1,
+    "end_call_after_silence_ms": 30000,
+    "max_call_duration_ms": 419000,
+    "stt_mode": "fast",
+    "denoising_mode": "noise-cancellation"
+  },
+  "voicemail_option": {
+    "action": {
+      "type": "hangup"
+    }
+  },
+  "post_call_analysis_data": [
+    {
+      "type": "boolean",
+      "name": "Iife_change_identified",
+      "description": "Find out whether there are any life changes for the client in the past year."
+    },
+    {
+      "name": "life_change_details",
+      "description": "The details of the life changes mentioned by the client",
+      "type": "string",
+      "examples": [
+        "Bought a new car",
+        "New teenage driver",
+        "Renovated my home"
+      ]
+    },
+    {
+      "name": "coverage_satisfaction",
+      "description": "Find out whether the client is satisfied with their coverage or not.\n\nIf they say \"yes\", it means they are satisfied.\n\nIf they say any of these, it means they are dissatisfied:\n- \"I'm not sure what I have\"\n- \"I think my coverage is too low\"\n- \"I feel like I'm paying for too much\"\n- Any uncertainty about coverage",
+      "type": "boolean",
+      "required": false
+    },
+    {
+      "type": "string",
+      "name": "coverage_dissatisfaction_reason",
+      "description": "Find out the reason why the client is dissatisfied with their coverage"
+    },
+    {
+      "name": "qualification_result",
+      "description": "Find out if the client needs a review or it's an auto-renewal.\n\nIf a client answers \"yes\" to any of the qualification questions, they need a review.\n\nIf a client answers \"no\" to both qualification questions, they are opting for auto-renewal\n\nIf a client does not answer both qualification questions, say the information is \"Not Available\"",
+      "type": "enum",
+      "choices": [
+        "Need Review",
+        "Auto Renewal",
+        "Not Available"
+      ]
+    },
+    {
+      "type": "boolean",
+      "name": "appointment_booked",
+      "description": "Find out if the user booked an appointment after qualifying for a review"
+    },
+    {
+      "name": "secondary_email",
+      "description": "This is the email a client provides for booking if they say that the email we have is no longer the right one to use",
+      "type": "string",
+      "examples": [
+        "user@example.com",
+        "user@example.com",
+        "user@example.com"
+      ],
+      "required": false
+    }
+  ],
+  "llm": {
+    "model": "gpt-4.1",
+    "model_temperature": 0,
+    "tool_call_strict_mode": null,
+    "begin_message": "Hi {{first_name}}, this is Amanda. I'm a digital assistant for Lone Star Insurance Group. This call may be recorded for quality and training purposes. Do you have a quick minute?",
+    "default_dynamic_variables": [],
+    "tools": [
+      {
+        "type": "end_call",
+        "name": "end_call",
+        "description": "End the call when user has to leave (like says bye) or you are instructed to do so."
+      },
+      {
+        "parameter_type": "json",
+        "method": "POST",
+        "query_params": {},
+        "description": "",
+        "type": "custom",
+        "url": "https://your-n8n-instance.example.com/webhook/YOUR_WEBHOOK_PATH",
+        "args_at_root": false,
+        "timeout_ms": 120000,
+        "speak_after_execution": true,
+        "name": "agent_transfer",
+        "response_variables": {},
+        "speak_during_execution": false
+      },
+      {
+        "parameter_type": "json",
+        "method": "POST",
+        "query_params": {},
+        "description": "Check the calendar for open slots and availability",
+        "type": "custom",
+        "url": "https://your-n8n-instance.example.com/webhook/YOUR_WEBHOOK_PATH",
+        "args_at_root": false,
+        "execution_message_description": "Give me a moment while I check the calendar",
+        "timeout_ms": 120000,
+        "speak_after_execution": true,
+        "name": "check_availability",
+        "response_variables": {},
+        "speak_during_execution": true,
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "soonest_availability": {
+              "type": "string",
+              "description": "Human-readable earliest available appointment"
+            },
+            "full_week_availability": {
+              "type": "string",
+              "description": "Human-readable form of all available slots for the upcoming 7 days"
+            }
+          },
+          "required": [
+            "soonest_availability",
+            "full_week_availability"
+          ]
+        }
+      },
+      {
+        "parameter_type": "json",
+        "method": "POST",
+        "query_params": {},
+        "description": "When users agree on an available time, book it on the calendar. The time parameter should be a full absolute date, such as \"Thursday, 2025 May 5/15/2025 10 AM\" (even if the user asks for a relative date such as \"next Tuesday\", convert it to absolute date). The time should always be IN THE FUTURE, the time right now is {{current_time_America/Chicago}} (Central Standard Time). The timezone parameter should always be \"America/Chicago\". The notes parameter should have a one sentence summary of the conversation. The guests parameter should be \"user@example.com\". The name parameter should be {{first_name}} {{last_name}}. rescheduleReason should be \"first time booking\".",
+        "type": "custom",
+        "url": "https://your-n8n-instance.example.com/webhook/YOUR_WEBHOOK_PATH",
+        "args_at_root": false,
+        "execution_message_description": "Booking you on the calendar right now",
+        "timeout_ms": 120000,
+        "speak_after_execution": true,
+        "name": "book_appointment",
+        "response_variables": {},
+        "speak_during_execution": true,
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "last_name": {
+              "type": "string",
+              "description": "The caller's last name."
+            },
+            "email_address": {
+              "type": "string",
+              "description": "The caller's email address."
+            },
+            "first_name": {
+              "type": "string",
+              "description": "The caller's first name."
+            },
+            "absolute_time": {
+              "type": "string",
+              "description": "The ISO timestamp of the chosen appointment time."
+            }
+          },
+          "required": [
+            "first_name",
+            "last_name",
+            "absolute_time",
+            "email_address"
+          ]
+        }
+      }
+    ]
+  },
+  "webhook": "https://your-n8n-instance.example.com/webhook/YOUR_WEBHOOK_PATH"
+}
